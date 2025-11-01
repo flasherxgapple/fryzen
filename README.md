@@ -1,6 +1,6 @@
 # Fryzen
 
-A fast-paced, retro-style shoot 'em up game where you control a diamond-shaped ship battling enemies and collecting power-ups. Implemented in multiple languages for cross-platform fun.
+A fast-paced, twin joystick shoot 'em up game where you control a diamond-shaped ship battling enemies and collecting power-ups. Implemented in multiple languages for cross-platform fun.
 
 ## Description
 
