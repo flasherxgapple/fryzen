@@ -187,19 +187,20 @@ class Player extends Entity {
      this.shootDirY = 0;
 
    }
-  update(dt, world) {
-    // movement
-    let ax = 0, ay = 0;
-    let useTouch = typeof Joystick !== 'undefined' && isTouchDevice && Joystick.left;
-    if (useTouch && (Joystick.left.active || Math.hypot(Joystick.left.value.x, Joystick.left.value.y) > 0.1)) {
-      ax = Joystick.left.value.x;
-      ay = Joystick.left.value.y;
-    } else {
-      if (Input.keys.has('w')) ay -= 1;
-      if (Input.keys.has('s')) ay += 1;
-      if (Input.keys.has('a')) ax -= 1;
-      if (Input.keys.has('d')) ax += 1;
-    }
+   update(dt, world) {
+     // movement
+     let ax = 0, ay = 0;
+     // keyboard input
+     if (Input.keys.has('w')) ay -= 1;
+     if (Input.keys.has('s')) ay += 1;
+     if (Input.keys.has('a')) ax -= 1;
+     if (Input.keys.has('d')) ax += 1;
+     // touch override
+     let useTouch = typeof Joystick !== 'undefined' && isTouchDevice && Joystick.left;
+     if (useTouch && Joystick.left.active) {
+       ax = Joystick.left.value.x;
+       ay = Joystick.left.value.y;
+     }
     // normalize
     const len = Math.hypot(ax, ay) || 1;
     this.vx = (ax/len) * this.speed;
