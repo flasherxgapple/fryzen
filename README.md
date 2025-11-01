@@ -8,7 +8,6 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 
 ## Features
 
-- **Multiple Implementations**: Available in JavaScript (web), C++ (terminal), and Python (Pygame).
 - **Shoot Modes**: Rapid fire, blast (spread), and barrage (fast, inaccurate).
 - **Power-Ups**: Collect blue orbs to increase score and occasionally gain lives.
 - **Enemies**: Basic hexagon enemies and charger variants with AI.
@@ -55,7 +54,6 @@ Inspired by twin joystick shooter game like Geometry Wars and [Pew Pew Live](htt
 
 - **JavaScript/HTML5 Canvas**: Core web implementation with responsive design.
 - **CSS**: Styling with dark theme and animations.
-- **C++**: Terminal-based version using console output.
 - **Python/Pygame**: Desktop version with Pygame library.
 - **Audio**: Web Audio API for beeps.
 
