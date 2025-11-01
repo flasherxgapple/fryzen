@@ -1,23 +1,83 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 
+// Responsive resize logic
+function resizeGameCanvas() {
+  const minW = 400, minH = 240;
+  let w = window.innerWidth, h = window.innerHeight;
+  w = Math.max(w, minW);
+  h = Math.max(h, minH);
+  // Maintain aspect ratio (16:10 preferred)
+  let aspect = 16/10;
+  if (w/h > aspect) w = h * aspect;
+  else h = w / aspect;
+  canvas.width = Math.round(w);
+  canvas.height = Math.round(h);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  if (window.world) {
+    world.w = w;
+    world.h = h;
+  }
+}
+window.addEventListener('resize', () => {
+  resizeGameCanvas();
+  if (window.world) {
+    world.w = getCanvasWidth();
+    world.h = getCanvasHeight();
+    // Optionally, clamp player and entities to new bounds
+    if (world.player) {
+      world.player.x = clamp(world.player.x, 2, world.w - world.player.w - 2);
+      world.player.y = clamp(world.player.y, 2, world.h - world.player.h - 2);
+    }
+    for (const e of world.entities) {
+      if (e !== world.player) {
+        e.x = clamp(e.x, 0, world.w - e.w);
+        e.y = clamp(e.y, 0, world.h - e.h);
+      }
+    }
+  }
+});
+window.addEventListener('orientationchange', () => {
+  resizeGameCanvas();
+  if (window.world) {
+    world.w = getCanvasWidth();
+    world.h = getCanvasHeight();
+    if (world.player) {
+      world.player.x = clamp(world.player.x, 2, world.w - world.player.w - 2);
+      world.player.y = clamp(world.player.y, 2, world.h - world.player.h - 2);
+    }
+    for (const e of world.entities) {
+      if (e !== world.player) {
+        e.x = clamp(e.x, 0, world.w - e.w);
+        e.y = clamp(e.y, 0, world.h - e.h);
+      }
+    }
+  }
+});
+window.addEventListener('load', resizeGameCanvas);
+
+
 const UI = {
   score: document.getElementById('score'),
   lives: document.getElementById('lives'),
   level: document.getElementById('level'),
+  modeHint: document.getElementById('mode-hint'),
   btnStart: document.getElementById('btn-start'),
   btnPause: document.getElementById('btn-pause'),
   vol: document.getElementById('vol'),
 };
 
-const WIDTH = canvas.width;
-const HEIGHT = canvas.height;
+// Always use live canvas size for world dimensions
+function getCanvasWidth() { return canvas.width; }
+function getCanvasHeight() { return canvas.height; }
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max+1)); }
 function dist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
 function now() { return performance.now(); }
+function lerp(a, b, t) { return a + (b - a) * t; }
 
 const Input = {
   keys: new Set(),
@@ -30,8 +90,38 @@ canvas.addEventListener('mousemove', e => {
   Input.mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
   Input.mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
 });
-canvas.addEventListener('mousedown', e => { Input.mouse.down = true; });
-canvas.addEventListener('mouseup', e => { Input.mouse.down = false; });
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0) { // left click for shooting
+    Input.mouse.down = true;
+  } else if (e.button === 2) { // right click for mode change
+    e.preventDefault();
+    const idx = Player.shootModes.indexOf(world.player.shootMode);
+    world.player.shootMode = Player.shootModes[(idx + 1) % Player.shootModes.length];
+    updateShootModeHUD();
+  } else if (e.button === 1) { // middle click for ultimate
+    e.preventDefault();
+    if (world.player.score >= 20) {
+      const numBullets = 200;
+      const centerX = world.player.x + world.player.w/2;
+      const centerY = world.player.y + world.player.h/2;
+      for (let i = 0; i < numBullets; i++) {
+        const angle = (i / numBullets) * Math.PI * 2;
+        const bx = centerX + Math.cos(angle) * (world.player.w/2 + 6);
+        const by = centerY + Math.sin(angle) * (world.player.h/2 + 6);
+        const b = new Bullet(bx, by, Math.cos(angle) * CONFIG.bulletSpeed, Math.sin(angle) * CONFIG.bulletSpeed, 'player');
+        world.spawn(b);
+      }
+      world.player.score -= 20;
+      AudioEngine.beep(1400, 0.12);
+      updateShootModeHUD();
+    }
+  }
+});
+canvas.addEventListener('mouseup', e => {
+  if (e.button === 0) {
+    Input.mouse.down = false;
+  }
+});
 
 const AudioEngine = {
   volume: 0.5,
@@ -81,25 +171,35 @@ class Player extends Entity {
 
   static shootModes = ['rapid', 'blast', 'barrage'];
 
-  constructor(x,y) {
-    super(x,y,28,28);
-    this.speed = CONFIG.playerSpeed;
-    this.color = '#7ef2b8';
-    this.shootCooldown = 0;
-    this.lives = 10;
-    this.score = 30;
-this.invuln = 0;
-    this.shootMode = 'rapid';
-    this.blastCooldown = 0;
+   constructor(x,y) {
+     super(x,y,28,28);
+     this.speed = CONFIG.playerSpeed;
+     this.color = '#7ef2b8';
+     this.shootCooldown = 0;
+     this.lives = 10;
+     this.score = 30;
+     this.invuln = 0;
+     this.shootMode = 'rapid';
+     this.blastCooldown = 3;
+     this.lastAngle = 0;
+     this.currentAngle = 0;
+     this.shootDirX = 0;
+     this.shootDirY = 0;
 
-  }
+   }
   update(dt, world) {
     // movement
     let ax = 0, ay = 0;
-    if (Input.keys.has('w')) ay -= 1;
-    if (Input.keys.has('s')) ay += 1;
-    if (Input.keys.has('a')) ax -= 1;
-    if (Input.keys.has('d')) ax += 1;
+    let useTouch = typeof Joystick !== 'undefined' && isTouchDevice && Joystick.left;
+    if (useTouch && (Joystick.left.active || Math.hypot(Joystick.left.value.x, Joystick.left.value.y) > 0.1)) {
+      ax = Joystick.left.value.x;
+      ay = Joystick.left.value.y;
+    } else {
+      if (Input.keys.has('w')) ay -= 1;
+      if (Input.keys.has('s')) ay += 1;
+      if (Input.keys.has('a')) ax -= 1;
+      if (Input.keys.has('d')) ax += 1;
+    }
     // normalize
     const len = Math.hypot(ax, ay) || 1;
     this.vx = (ax/len) * this.speed;
@@ -109,16 +209,45 @@ this.invuln = 0;
     // clamp to world bounds
     this.x = clamp(this.x, 2, world.w - this.w - 2);
     this.y = clamp(this.y, 2, world.h - this.h - 2);
-    // shooting with arrow keys
-    this.shootCooldown -= dt;
-    // Diagonal shooting support
-    let shootDir = {x: 0, y: 0};
-    if (Input.keys.has('ArrowUp')) shootDir.y -= 1;
-    if (Input.keys.has('ArrowDown')) shootDir.y += 1;
-    if (Input.keys.has('ArrowLeft')) shootDir.x -= 1;
-    if (Input.keys.has('ArrowRight')) shootDir.x += 1;
-    // Only shoot if a direction is pressed
-    if ((shootDir.x !== 0 || shootDir.y !== 0) && this.shootCooldown <= 0) {
+     // shooting with arrow keys or right joystick
+     this.shootCooldown -= dt;
+     // Diagonal shooting support
+     let shootDir = {x: 0, y: 0};
+     if (useTouch && (Joystick.right.active || Math.hypot(Joystick.right.value.x, Joystick.right.value.y) > 0.1)) {
+       shootDir.x = Joystick.right.value.x;
+       shootDir.y = Joystick.right.value.y;
+       // For touch, update shootDir directly
+       this.shootDirX = shootDir.x;
+       this.shootDirY = shootDir.y;
+     } else {
+       // For keyboard, smooth the direction
+       let targetX = 0, targetY = 0;
+       if (Input.keys.has('ArrowUp')) targetY -= 1;
+       if (Input.keys.has('ArrowDown')) targetY += 1;
+       if (Input.keys.has('ArrowLeft')) targetX -= 1;
+       if (Input.keys.has('ArrowRight')) targetX += 1;
+       if (targetX !== 0 || targetY !== 0) {
+         const len = Math.hypot(targetX, targetY);
+         targetX /= len;
+         targetY /= len;
+         this.shootDirX = lerp(this.shootDirX, targetX, 0.3);
+         this.shootDirY = lerp(this.shootDirY, targetY, 0.3);
+       }
+       shootDir.x = this.shootDirX;
+       shootDir.y = this.shootDirY;
+     }
+     // Mouse shooting
+     if (Input.mouse.down) {
+       const dx = Input.mouse.x - (this.x + this.w/2);
+       const dy = Input.mouse.y - (this.y + this.h/2);
+       const dist = Math.hypot(dx, dy);
+       if (dist > 0) {
+         shootDir.x = dx / dist;
+         shootDir.y = dy / dist;
+       }
+     }
+     // Only shoot if a direction is pressed
+     if ((shootDir.x !== 0 || shootDir.y !== 0) && this.shootCooldown <= 0) {
       // Normalize
       const len = Math.hypot(shootDir.x, shootDir.y) || 1;
       shootDir.x /= len;
@@ -146,7 +275,7 @@ switch (this.shootMode) {
         const b = new Bullet(bx, by, Math.cos(spread) * CONFIG.bulletSpeed, Math.sin(spread) * CONFIG.bulletSpeed, 'player');
         world.spawn(b);
       }
-      this.shootCooldown = 0.45;
+      this.shootCooldown = 0.48;
       if (!this.timeAttackActive) this.score -= 6;
       AudioEngine.beep(700, 0.06);
     }
@@ -159,7 +288,7 @@ switch (this.shootMode) {
       const by = this.y + this.h/2 + Math.sin(spread) * (this.h/2 + 6);
       const b = new Bullet(bx, by, Math.cos(spread) * CONFIG.bulletSpeed, Math.sin(spread) * CONFIG.bulletSpeed, 'player');
       world.spawn(b);
-      this.shootCooldown = 0.08;
+      this.shootCooldown = 0.06;
       if (!this.timeAttackActive) this.score -= 1;
       AudioEngine.beep(1000, 0.02);
     }
@@ -170,22 +299,51 @@ switch (this.shootMode) {
     // if (Input.mouse.down && this.shootCooldown <= 0) { ... }
     if (this.invuln > 0) this.invuln -= dt;
   }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x + this.w/2, this.y + this.h/2);
-    // pulsate when invulnerable
-    const pulse = (this.invuln > 0) ? 1 + Math.sin(now()/60)/6 : 1;
-    ctx.scale(pulse, pulse);
-    ctx.fillStyle = this.color;
-    roundRect(ctx, -this.w/2, -this.h/2, this.w, this.h, 6);
-    ctx.fill();
-    ctx.restore();
-    // face towards mouse
-    if (CONFIG.DEBUG) {
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.fillRect(this.x-1, this.y-1, this.w+2, this.h+2);
-    }
-  }
+   // Mesh for player: kite/diamond shape (relative to center)
+   // Edit these points to change the player shape
+   // Mesh for player: sharp kite/diamond shape (edit points to change shape)
+   static mesh = [
+     [0, -18],   // sharp front (top)
+     [11, 4],    // right
+     [0, 12],    // back (bottom)
+     [-11, 4],   // left
+   ];
+   draw(ctx) {
+     ctx.save();
+     ctx.translate(this.x + this.w/2, this.y + this.h/2);
+      // Calculate movement angle for rotation
+      let targetAngle = this.lastAngle;
+      if (this.vx !== 0 || this.vy !== 0) {
+        targetAngle = Math.atan2(this.vy, this.vx) + Math.PI/2; // +90deg so front points up
+        this.lastAngle = targetAngle;
+      }
+      // Normalize angles to [-pi, pi] for smooth interpolation
+      targetAngle = ((targetAngle + Math.PI) % (2 * Math.PI)) - Math.PI;
+      this.currentAngle = ((this.currentAngle + Math.PI) % (2 * Math.PI)) - Math.PI;
+      // Compute shortest angle difference
+      let diff = targetAngle - this.currentAngle;
+      diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
+      this.currentAngle += diff * 0.3;
+      ctx.rotate(this.currentAngle);
+     // pulsate when invulnerable
+     const pulse = (this.invuln > 0) ? 1 + Math.sin(now()/60)/6 : 1;
+     ctx.scale(pulse, pulse);
+     ctx.fillStyle = this.color;
+     // Draw mesh shape
+     ctx.beginPath();
+     const mesh = Player.mesh;
+     ctx.moveTo(mesh[0][0], mesh[0][1]);
+     for (let i = 1; i < mesh.length; i++) {
+       ctx.lineTo(mesh[i][0], mesh[i][1]);
+     }
+     ctx.closePath();
+     ctx.fill();
+     ctx.restore();
+     if (CONFIG.DEBUG) {
+       ctx.fillStyle = 'rgba(255,255,255,0.1)';
+       ctx.fillRect(this.x-1, this.y-1, this.w+2, this.h+2);
+     }
+   }
 }
 
 class Bullet extends Entity {
@@ -214,69 +372,105 @@ class Bullet extends Entity {
 }
 
 class Enemy extends Entity {
-  constructor(x,y,type='basic') {
-    super(x,y,26,26);
-    this.type = type;
-    this.color = (type==='charger')? '#ff9f43' : '#ff6b6b';
-    this.speed = CONFIG.enemySpeed * (type==='charger'?1.4:1);
-    this.health = 5;
-    this.fireCooldown = rand(0.5, 1.6);
-    this.patrolAngle = rand(0, Math.PI*2);
-    this.tags.add('enemy');
-    this.target = null;
-  }
-  update(dt, world) {
-    const player = world.player;
-    if(!player) return;
-    // Simple AI: if near, move towards player; else patrol
-    const dx = (player.x + player.w/2) - (this.x + this.w/2);
-    const dy = (player.y + player.h/2) - (this.y + this.h/2);
-    const d = Math.hypot(dx, dy);
-    if (d < 300) {
-      // pursue
-      this.vx = (dx/d) * this.speed;
-      this.vy = (dy/d) * this.speed;
-      // shoot occasionally if in range
-      if (d < 420) {
-        this.fireCooldown -= dt;
-        if (this.fireCooldown <= 0) {
-          const angle = Math.atan2(dy, dx);
-          const bx = this.x + this.w/2 + Math.cos(angle) * (this.w/2 + 6);
-          const by = this.y + this.h/2 + Math.sin(angle) * (this.h/2 + 6);
-          const b = new Bullet(bx, by, Math.cos(angle) * (CONFIG.bulletSpeed*0.72), Math.sin(angle) * (CONFIG.bulletSpeed*0.72), 'enemy');
-          world.spawn(b);
-          this.fireCooldown = rand(0.6, 1.6);
-        }
-      }
-    } else {
-      // patrol
-      this.patrolAngle += dt * 0.8;
-      this.vx = Math.cos(this.patrolAngle) * (this.speed * 0.6);
-      this.vy = Math.sin(this.patrolAngle) * (this.speed * 0.6);
-    }
-    // apply movement
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    // keep within bounds
-    if (this.x < 8) this.x = 8;
-    if (this.y < 8) this.y = 8;
-    if (this.x > world.w - this.w - 8) this.x = world.w - this.w - 8;
-    if (this.y > world.h - this.h - 8) this.y = world.h - this.h - 8;
-  }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x + this.w/2, this.y + this.h/2);
-    const scale = 1 + Math.sin(now()/150 + (this.x+this.y)/50)*0.03;
-    ctx.scale(scale, scale);
-    ctx.fillStyle = this.color;
-    roundRect(ctx, -this.w/2, -this.h/2, this.w, this.h, 4);
-    ctx.fill();
-    ctx.restore();
-    if (CONFIG.DEBUG) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-      ctx.strokeRect(this.x, this.y, this.w, this.h);
-    }
-  }
+   constructor(x,y,type='basic') {
+     super(x,y,26,26);
+     this.type = type;
+     this.color = (type==='charger')? '#ff9f43' : '#ff6b6b';
+     this.speed = CONFIG.enemySpeed * (type==='charger'?1.4:1);
+     this.health = 5;
+     this.fireCooldown = rand(0.5, 1.6);
+     this.patrolAngle = rand(0, Math.PI*2);
+     this.tags.add('enemy');
+     this.target = null;
+     this.spinAngle = rand(0, Math.PI*2); // for spinning effect
+   }
+   update(dt, world) {
+     const player = world.player;
+     if(!player) return;
+     // Simple AI: if near, move towards player; else patrol
+     const dx = (player.x + player.w/2) - (this.x + this.w/2);
+     const dy = (player.y + player.h/2) - (this.y + this.h/2);
+     const d = Math.hypot(dx, dy);
+     if (d < 300) {
+       // pursue
+       this.vx = (dx/d) * this.speed;
+       this.vy = (dy/d) * this.speed;
+       // shoot occasionally if in range
+       if (d < 420) {
+         this.fireCooldown -= dt;
+         if (this.fireCooldown <= 0) {
+           const angle = Math.atan2(dy, dx);
+           const bx = this.x + this.w/2 + Math.cos(angle) * (this.w/2 + 6);
+           const by = this.y + this.h/2 + Math.sin(angle) * (this.h/2 + 6);
+           const b = new Bullet(bx, by, Math.cos(angle) * (CONFIG.bulletSpeed*0.72), Math.sin(angle) * (CONFIG.bulletSpeed*0.72), 'enemy');
+           world.spawn(b);
+           this.fireCooldown = rand(0.6, 1.6);
+         }
+       }
+     } else {
+       // patrol
+       this.patrolAngle += dt * 0.8;
+       this.vx = Math.cos(this.patrolAngle) * (this.speed * 0.6);
+       this.vy = Math.sin(this.patrolAngle) * (this.speed * 0.6);
+     }
+     // apply movement
+     this.x += this.vx * dt;
+     this.y += this.vy * dt;
+     // spin the enemy
+     this.spinAngle += dt * 2.2; // adjust speed as desired
+     // keep within bounds
+     if (this.x < 8) this.x = 8;
+     if (this.y < 8) this.y = 8;
+     if (this.x > world.w - this.w - 8) this.x = world.w - this.w - 8;
+     if (this.y > world.h - this.h - 8) this.y = world.h - this.h - 8;
+   }
+   // Meshes for enemies:
+   // Hexagon (basic/red), Pentagon (charger/orange)
+   static meshes = {
+     basic: [ // Hexagon
+       [0, -13],
+       [11, -6],
+       [11, 6],
+       [0, 13],
+       [-11, 6],
+       [-11, -6],
+     ],
+     charger: [ // Pentagon
+       [0, -13],
+       [12, -4],
+       [7, 12],
+       [-7, 12],
+       [-12, -4],
+     ],
+     tank: [ // Square (default fallback)
+       [-12, -12],
+       [12, -12],
+       [12, 12],
+       [-12, 12],
+     ],
+   };
+   draw(ctx) {
+     ctx.save();
+     ctx.translate(this.x + this.w/2, this.y + this.h/2);
+     ctx.rotate(this.spinAngle || 0); // spin the mesh
+     const scale = 1 + Math.sin(now()/150 + (this.x+this.y)/50)*0.03;
+     ctx.scale(scale, scale);
+     ctx.fillStyle = this.color;
+     // Choose mesh by type
+     const mesh = Enemy.meshes[this.type] || Enemy.meshes.tank;
+     ctx.beginPath();
+     ctx.moveTo(mesh[0][0], mesh[0][1]);
+     for (let i = 1; i < mesh.length; i++) {
+       ctx.lineTo(mesh[i][0], mesh[i][1]);
+     }
+     ctx.closePath();
+     ctx.fill();
+     ctx.restore();
+     if (CONFIG.DEBUG) {
+       ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+       ctx.strokeRect(this.x, this.y, this.w, this.h);
+     }
+   }
 }
 
 class Pickup extends Entity {
@@ -538,7 +732,7 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function drawGrid(ctx, w, h) {
   const ts = CONFIG.tileSize;
-  ctx.fillStyle = '#07111a';
+  ctx.fillStyle = '#07212a';
   ctx.fillRect(0,0,w,h);
   ctx.strokeStyle = 'rgba(255,255,255,0.02)';
   ctx.lineWidth = 1;
@@ -550,7 +744,7 @@ function drawGrid(ctx, w, h) {
   }
 }
 
-const world = new World(WIDTH, HEIGHT);
+const world = new World(getCanvasWidth(), getCanvasHeight());
 let lastT = now();
 let accumulator = 0;
 
@@ -563,14 +757,19 @@ function gameTick() {
     world.update(dt);
   }
   // render
-  ctx.clearRect(0,0,WIDTH,HEIGHT);
-  world.draw(ctx);
-  // UI sync
-  UI.score.textContent = `Score: ${Math.floor(world.player?.score || 0)}`;
-  UI.lives.textContent = `Lives: ${world.player?.lives ?? 0}`;
-  UI.level.textContent = `Level: ${world.level}`;
-  updateShootModeHUD();
-  requestAnimationFrame(gameTick);
+ctx.clearRect(0,0,getCanvasWidth(),getCanvasHeight());
+   world.draw(ctx);
+    // UI sync
+    UI.score.textContent = `Score: ${Math.floor(world.player?.score || 0)}`;
+    UI.lives.textContent = `Lives: ${world.player?.lives ?? 0}`;
+    UI.level.textContent = `Level: ${world.level}`;
+    if (isTouchDevice()) {
+      document.getElementById('touch-score').textContent = `Score: ${Math.floor(world.player?.score || 0)}`;
+      document.getElementById('touch-lives').textContent = `Lives: ${world.player?.lives ?? 0}`;
+      document.getElementById('touch-level').textContent = `Level: ${world.level}`;
+    }
+   updateShootModeHUD();
+   requestAnimationFrame(gameTick);
 }
 
 UI.btnStart.addEventListener('click', () => {
@@ -586,20 +785,25 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // auto-start on load
 function updateShootModeHUD() {
-  if (!UI.shootMode) return;
   let mode = world.player?.shootMode || 'rapid';
-  let label = mode.toUpperCase();
-  
-  UI.shootMode.textContent = `Mode: ${label}`;
+  let capitalized = mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
+  if (UI.btnMode) UI.btnMode.textContent = capitalized;
+  if (UI.modeHint) UI.modeHint.textContent = `Mode: ${capitalized} | Press "Tab" to Change`;
 }
 
 window.addEventListener('load', () => {
-  world.init();
-  lastT = now();
-  UI.shootMode = document.getElementById('shoot-mode');
-  requestAnimationFrame(gameTick);
-  updateShootModeHUD();
-});
+    world.w = getCanvasWidth();
+    world.h = getCanvasHeight();
+    world.init();
+    lastT = now();
+    UI.shootMode = document.getElementById('shoot-mode');
+    UI.btnMode = document.getElementById('btn-mode');
+    if (isTouchDevice()) {
+      document.getElementById('hud').style.display = 'none';
+    }
+    requestAnimationFrame(gameTick);
+    updateShootModeHUD();
+ });
 
 window.addEventListener('keydown', e => {
   // Ultimate circular burst
@@ -670,6 +874,280 @@ function loadState() {
     console.warn('Failed to load state', e);
   }
 }
+
+// --- Virtual Joystick Support ---
+
+function isTouchDevice() {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+const joystickLeft = document.getElementById('joystick-left');
+const joystickRight = document.getElementById('joystick-right');
+
+// Joystick state
+const Joystick = {
+  left: { active: false, x: 0, y: 0, dx: 0, dy: 0, value: {x:0, y:0}, touchId: null },
+  right: { active: false, x: 0, y: 0, dx: 0, dy: 0, value: {x:0, y:0}, touchId: null },
+  radius: 60, // px
+  deadzone: 0.18, // normalized
+};
+
+function showJoysticks(show) {
+  joystickLeft.style.display = show ? 'block' : 'none';
+  joystickRight.style.display = show ? 'block' : 'none';
+}
+
+function setupVirtualJoysticks() {
+  console.log('setupVirtualJoysticks called');
+  if (joystickLeft) console.log('joystickLeft present');
+  if (joystickRight) console.log('joystickRight present');
+  if (!isTouchDevice()) {
+    showJoysticks(false);
+    return;
+  }
+  showJoysticks(true);
+  // Position overlays
+  joystickLeft.style.position = 'fixed';
+  joystickLeft.style.left = '24px';
+  joystickLeft.style.bottom = '24px';
+  joystickLeft.style.width = joystickLeft.style.height = (Joystick.radius*2)+'px';
+  joystickLeft.style.zIndex = 99;
+  joystickRight.style.position = 'fixed';
+  joystickRight.style.right = '24px';
+  joystickRight.style.bottom = '24px';
+  joystickRight.style.width = joystickRight.style.height = (Joystick.radius*2)+'px';
+  joystickRight.style.zIndex = 99;
+
+  // Multi-touch for left joystick
+  joystickLeft.addEventListener('touchstart', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (!Joystick.left.active) {
+        Joystick.left.active = true;
+        Joystick.left.touchId = t.identifier;
+        const rect = joystickLeft.getBoundingClientRect();
+        Joystick.left.x = rect.left + rect.width/2;
+        Joystick.left.y = rect.top + rect.height/2;
+        updateJoystickTouch(t, 'left');
+        drawJoystick('left');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickLeft.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const t = e.touches[i];
+      if (Joystick.left.active && Joystick.left.touchId === t.identifier) {
+        updateJoystickTouch(t, 'left');
+        drawJoystick('left');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickLeft.addEventListener('touchend', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (Joystick.left.active && Joystick.left.touchId === t.identifier) {
+        Joystick.left.active = false;
+        Joystick.left.touchId = null;
+        Joystick.left.value = {x:0, y:0};
+        drawJoystick('left');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickLeft.addEventListener('touchcancel', function(e) {
+    Joystick.left.active = false;
+    Joystick.left.touchId = null;
+    Joystick.left.value = {x:0, y:0};
+    drawJoystick('left');
+    e.preventDefault();
+  }, {passive:false});
+
+  // Multi-touch for right joystick
+  joystickRight.addEventListener('touchstart', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (!Joystick.right.active) {
+        Joystick.right.active = true;
+        Joystick.right.touchId = t.identifier;
+        const rect = joystickRight.getBoundingClientRect();
+        Joystick.right.x = rect.left + rect.width/2;
+        Joystick.right.y = rect.top + rect.height/2;
+        updateJoystickTouch(t, 'right');
+        drawJoystick('right');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickRight.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const t = e.touches[i];
+      if (Joystick.right.active && Joystick.right.touchId === t.identifier) {
+        updateJoystickTouch(t, 'right');
+        drawJoystick('right');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickRight.addEventListener('touchend', function(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (Joystick.right.active && Joystick.right.touchId === t.identifier) {
+        Joystick.right.active = false;
+        Joystick.right.touchId = null;
+        Joystick.right.value = {x:0, y:0};
+        drawJoystick('right');
+        break;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+  joystickRight.addEventListener('touchcancel', function(e) {
+    Joystick.right.active = false;
+    Joystick.right.touchId = null;
+    Joystick.right.value = {x:0, y:0};
+    drawJoystick('right');
+    e.preventDefault();
+  }, {passive:false});
+
+  // Initial draw
+  drawJoystick('left');
+  drawJoystick('right');
+}
+
+function updateJoystickTouch(t, side) {
+  const joy = (side === 'left') ? joystickLeft : joystickRight;
+  const state = Joystick[side];
+  const rect = joy.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const dx = t.clientX - cx;
+  const dy = t.clientY - cy;
+  const dist = Math.hypot(dx, dy);
+  let nx = dx / Joystick.radius;
+  let ny = dy / Joystick.radius;
+  // Clamp to circle
+  if (dist > Joystick.radius) {
+    nx = nx / dist * Joystick.radius;
+    ny = ny / dist * Joystick.radius;
+  }
+  // Deadzone
+  const mag = Math.hypot(nx, ny);
+  if (mag < Joystick.deadzone) {
+    state.value = {x:0, y:0};
+  } else {
+    state.value = {x: nx, y: ny};
+  }
+}
+
+function drawJoystick(side) {
+  const joy = (side === 'left') ? joystickLeft : joystickRight;
+  // Use canvas for drawing
+  let cvs = joy.querySelector('canvas');
+  if (!cvs) {
+    cvs = document.createElement('canvas');
+    cvs.width = cvs.height = Joystick.radius*2;
+    joy.appendChild(cvs);
+  }
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  // Outer circle
+  ctx.globalAlpha = 0.22;
+  ctx.beginPath();
+  ctx.arc(Joystick.radius, Joystick.radius, Joystick.radius-2, 0, Math.PI*2);
+  ctx.fillStyle = side==='left' ? '#7ef2b8' : '#ffd95a';
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // Inner stick
+  const v = Joystick[side].value;
+  ctx.beginPath();
+  ctx.arc(Joystick.radius + v.x*Joystick.radius*0.7, Joystick.radius + v.y*Joystick.radius*0.7, 22, 0, Math.PI*2);
+  ctx.fillStyle = side==='left' ? '#00ff9f' : '#ffb800';
+  ctx.fill();
+}
+
+// On load, setup joysticks
+window.addEventListener('load', setupVirtualJoysticks);
+
+// --- Touch Change Mode Button ---
+window.addEventListener('load', function() {
+  const btnMode = document.getElementById('btn-mode');
+  const btnUlt = document.getElementById('btn-ult');
+
+  // Show/hide only on touch devices
+  function updateTouchButtonVisibility() {
+    if (isTouchDevice()) {
+      if (btnMode) btnMode.style.display = 'inline-flex';
+      if (btnUlt) btnUlt.style.display = 'inline-flex';
+    } else {
+      if (btnMode) btnMode.style.display = 'none';
+      if (btnUlt) btnUlt.style.display = 'none';
+    }
+  }
+  updateTouchButtonVisibility();
+
+// Mode button logic
+   function handleModeButton(e) {
+     e.preventDefault();
+     // Directly switch mode
+     const idx = Player.shootModes.indexOf(world.player.shootMode);
+     world.player.shootMode = Player.shootModes[(idx + 1) % Player.shootModes.length];
+     updateShootModeHUD();
+   }
+
+  function handleModeButtonTouch(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleModeButton(e);
+  }
+  if (btnMode) {
+    btnMode.addEventListener('click', handleModeButton);
+    btnMode.addEventListener('touchstart', function(e) {
+      btnMode.classList.add('pressed');
+      handleModeButtonTouch(e);
+    }, {passive: false});
+    btnMode.addEventListener('touchend', function() {
+      btnMode.classList.remove('pressed');
+    });
+    btnMode.addEventListener('touchcancel', function() {
+      btnMode.classList.remove('pressed');
+    });
+  }
+
+  // ULT button logic
+  function handleUltButton(e) {
+    e.preventDefault();
+    // Simulate Q keydown event
+    const evt = new KeyboardEvent('keydown', { key: 'q', bubbles: true });
+    window.dispatchEvent(evt);
+  }
+
+  function handleUltButtonTouch(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleUltButton(e);
+  }
+  if (btnUlt) {
+    btnUlt.addEventListener('click', handleUltButton);
+    btnUlt.addEventListener('touchstart', function(e) {
+      btnUlt.classList.add('pressed');
+      handleUltButtonTouch(e);
+    }, {passive: false});
+    btnUlt.addEventListener('touchend', function() {
+      btnUlt.classList.remove('pressed');
+    });
+    btnUlt.addEventListener('touchcancel', function() {
+      btnUlt.classList.remove('pressed');
+    });
+  }
+});
+
 
 (function polyRAF() {
   if (!window.requestAnimationFrame) {

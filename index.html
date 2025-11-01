@@ -7,22 +7,39 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="game-root">
-    <canvas id="game-canvas" width="1024" height="640"></canvas>
-    <div id="ui">
-<div id="hud">
-  <span id="score">Score: 0</span>
-  <span id="lives">Lives: 10</span>
-  <span id="level">Level: 1</span>
-  <span id="shoot-mode">Mode: RAPID</span>
-</div>
-      <div id="controls">
-        <button id="btn-start">Start / Restart</button>
-        <button id="btn-pause">Pause</button>
-        <label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.5"></label>
-      </div>
-    </div>
+   <div id="game-root">
+     <div id="game-canvas-container">
+       <canvas id="game-canvas" width="1024" height="640"></canvas>
+       <!-- Overlay UI on top of canvas -->
+         <div id="overlay-ui">
+  <div id="hud">
+    <span id="score">Score: 0</span>
+    <span id="lives">Lives: 10</span>
+    <span id="level">Level: 1</span>
+    <span class="hint">ULT: Press "Q"</span>
+    <span id="mode-hint" class="hint">Mode: Rapid | Press "Tab" to Change</span>
   </div>
+  <div id="controls">
+    <span id="touch-score" class="touch-only">Score: 0</span>
+    <span id="touch-lives" class="touch-only">Lives: 10</span>
+    <span id="touch-level" class="touch-only">Level: 1</span>
+              <button id="btn-ult" class="touch-only">ULT</button>
+              <button id="btn-mode" class="touch-only">Change Mode</button>
+              <button id="btn-start">Restart</button>
+              <button id="btn-pause">Pause</button>
+  <label id="vol-label">🔊 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+            </div>
+        </div>
+       <!-- Virtual Joysticks for mobile/touch devices -->
+<!-- Touchscreen top controls (ULT, Change Mode) -->
+
+<!-- Virtual Joysticks for mobile/touch devices -->
+<div id="touch-controls" class="touch-only">
+  <div id="joystick-left" class="virtual-joystick" style="display:none;"></div>
+</div>
+<div id="joystick-right" class="virtual-joystick" style="display:none;"></div>
+     </div>
+   </div>
   <script src="main.js"></script>
 </body>
 </html>
