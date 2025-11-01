@@ -213,26 +213,29 @@ class Player extends Entity {
      this.shootCooldown -= dt;
      // Diagonal shooting support
      let shootDir = {x: 0, y: 0};
-     if (useTouch && (Joystick.right.active || Math.hypot(Joystick.right.value.x, Joystick.right.value.y) > 0.1)) {
-       shootDir.x = Joystick.right.value.x;
-       shootDir.y = Joystick.right.value.y;
-       // For touch, update shootDir directly
-       this.shootDirX = shootDir.x;
-       this.shootDirY = shootDir.y;
-     } else {
+      if (useTouch && Joystick.right.active) {
+        shootDir.x = Joystick.right.value.x;
+        shootDir.y = Joystick.right.value.y;
+        // For touch, update shootDir directly
+        this.shootDirX = shootDir.x;
+        this.shootDirY = shootDir.y;
+      } else {
        // For keyboard, smooth the direction
        let targetX = 0, targetY = 0;
        if (Input.keys.has('ArrowUp')) targetY -= 1;
        if (Input.keys.has('ArrowDown')) targetY += 1;
        if (Input.keys.has('ArrowLeft')) targetX -= 1;
        if (Input.keys.has('ArrowRight')) targetX += 1;
-       if (targetX !== 0 || targetY !== 0) {
-         const len = Math.hypot(targetX, targetY);
-         targetX /= len;
-         targetY /= len;
-         this.shootDirX = lerp(this.shootDirX, targetX, 0.3);
-         this.shootDirY = lerp(this.shootDirY, targetY, 0.3);
-       }
+        if (targetX !== 0 || targetY !== 0) {
+          const len = Math.hypot(targetX, targetY);
+          targetX /= len;
+          targetY /= len;
+          this.shootDirX = lerp(this.shootDirX, targetX, 0.3);
+          this.shootDirY = lerp(this.shootDirY, targetY, 0.3);
+        } else {
+          this.shootDirX = 0;
+          this.shootDirY = 0;
+        }
        shootDir.x = this.shootDirX;
        shootDir.y = this.shootDirY;
      }
