@@ -22,7 +22,7 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 
 Navigate your ship, shoot enemies, and avoid collisions. Gain score by defeating enemies and collecting pickups. Levels increase difficulty with more enemies.
 
-Play the web version directly in your browser: [Link to live game]
+Play the web version directly in your browser: [https://fryzen.netlify.app]
 
 ### Desktop Controls
 
@@ -49,7 +49,7 @@ Play the web version directly in your browser: [Link to live game]
 
 ## Project Inspiration
 
-Inspired by classic arcade shooters like Gradius, R-Type, and Xevious, as well as modern bullet hell games such as Touhou. Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
+Inspired by twin joystick shooter game like Geometry Wars and [Pew Pew Live](https://github.com/pewpewlive).And browser game named [CyberRunner](https://github.com/Luka12-dev/CyberRunner). Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
 
 ## Technologies Used
 
@@ -78,8 +78,9 @@ Inspired by classic arcade shooters like Gradius, R-Type, and Xevious, as well a
 
 ## License
 
+MIT
 This project is open-source. Feel free to modify and distribute.
 
 ## Credits
 
-Created with passion for retro gaming. Inspired by classic shooters like Gradius and R-Type.
+Created with passion for Twin Joystick Shooter Game. Inspired by [Pew Pew Live](https://github.com/pewpewlive) & Geometry Wars.
