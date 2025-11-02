@@ -272,14 +272,14 @@ switch (this.shootMode) {
   case 'blast':
     if (this.score >= 6 || this.timeAttackActive) {
       const angle = Math.atan2(shootDir.y, shootDir.x);
-      for (let i = -1; i <= 1; i++) {
+      for (let i = -1; i <= 4; i++) {
         const spread = angle + i * 0.18; // wider spread for 3 bullets
         const bx = this.x + this.w/2 + Math.cos(spread) * (this.w/2 + 6);
         const by = this.y + this.h/2 + Math.sin(spread) * (this.h/2 + 6);
         const b = new Bullet(bx, by, Math.cos(spread) * CONFIG.bulletSpeed, Math.sin(spread) * CONFIG.bulletSpeed, 'player');
         world.spawn(b);
       }
-      this.shootCooldown = 0.48;
+      this.shootCooldown = 0.62;
       if (!this.timeAttackActive) this.score -= 6;
       AudioEngine.beep(700, 0.06);
     }
@@ -1157,4 +1157,5 @@ window.addEventListener('load', function() {
   if (!window.requestAnimationFrame) {
     window.requestAnimationFrame = function(cb) { return setTimeout(() => cb(performance.now()), 1000/60); };
   }
+
 })();
