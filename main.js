@@ -270,7 +270,7 @@ switch (this.shootMode) {
     }
     break;
   case 'blast':
-    if (this.score >= 6 || this.timeAttackActive) {
+    if (this.score >= 5 || this.timeAttackActive) {
       const angle = Math.atan2(shootDir.y, shootDir.x);
       for (let i = -1; i <= 4; i++) {
         const spread = angle + i * 0.18; // wider spread for 3 bullets
@@ -280,7 +280,7 @@ switch (this.shootMode) {
         world.spawn(b);
       }
       this.shootCooldown = 0.62;
-      if (!this.timeAttackActive) this.score -= 6;
+      if (!this.timeAttackActive) this.score -= 5;
       AudioEngine.beep(700, 0.06);
     }
     break;
