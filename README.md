@@ -1,6 +1,6 @@
 # Fryzen
 
-A fast-paced, retro-style shoot 'em up game where you control a diamond-shaped ship battling enemies and collecting power-ups. Implemented in multiple languages for cross-platform fun.
+A fast-paced, twin joystick shooter game where you control a diamond-shaped ship battling enemies and collecting power-ups.
 
 ## Description
 
@@ -8,7 +8,6 @@ Fryzen is an action-packed game inspired by twin joystick shooter game. Pilot yo
 
 ## Features
 
-- **Multiple Implementations**: Available in JavaScript (web), C++ (terminal), and Python (Pygame).
 - **Shoot Modes**: Rapid fire, blast (spread), and barrage (fast, inaccurate).
 - **Power-Ups**: Collect blue orbs to increase score and occasionally gain lives.
 - **Enemies**: Various Enemy with different ability.
