@@ -4,7 +4,7 @@ A fast-paced, retro-style shoot 'em up game where you control a diamond-shaped s
 
 ## Description
 
-Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your ship through waves of enemies, shoot bullets in different modes, and survive as long as possible. The game features smooth controls, particle effects, and responsive design for both desktop and mobile.
+Fryzen is an action-packed game inspired by twin joystick shooter game. Pilot your ship through waves of different enemies, shoot bullets in different modes, and survive as long as possible. The game features smooth controls, particle effects, and responsive design for both desktop and mobile.
 
 ## Features
 
@@ -23,7 +23,7 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 
 Navigate your ship, shoot enemies, and avoid collisions. Gain score by defeating enemies and collecting pickups. Levels increase difficulty with more enemies.
 
-Play the web version directly in your browser: [Link to live game]
+Play the web version directly in your browser: [https://fryzen.netlify.app]
 
 ### Desktop Controls
 
