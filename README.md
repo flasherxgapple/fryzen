@@ -11,12 +11,13 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 - **Multiple Implementations**: Available in JavaScript (web), C++ (terminal), and Python (Pygame).
 - **Shoot Modes**: Rapid fire, blast (spread), and barrage (fast, inaccurate).
 - **Power-Ups**: Collect blue orbs to increase score and occasionally gain lives.
-- **Enemies**: Basic hexagon enemies and charger variants with AI.
+- **Enemies**: Various Enemy with different ability.
 - **Ultimate Ability**: Circular bullet burst when score allows.
 - **Save/Load**: Desktop version supports saving/loading game state.
 - **Responsive Design**: Optimized for desktop, mobile, and touch devices.
 - **Audio**: Simple beep sounds for feedback.
 - **Debug Mode**: Toggle with F1 for development (shows entity count and hitboxes).
+- **Level Logic**: Defeat enemy to reach next level with 2x enemies and gain lives
 
 ## How to Play
 
@@ -49,13 +50,12 @@ Play the web version directly in your browser: [Link to live game]
 
 ## Project Inspiration
 
-Inspired by classic arcade shooters like Gradius, R-Type, and Xevious, as well as modern bullet hell games such as Touhou. Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
+Inspired by twin joystick shooter game, as well as modern bullet hell games such as Touhou. Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
 
 ## Technologies Used
 
 - **JavaScript/HTML5 Canvas**: Core web implementation with responsive design.
 - **CSS**: Styling with dark theme and animations.
-- **C++**: Terminal-based version using console output.
 - **Python/Pygame**: Desktop version with Pygame library.
 - **Audio**: Web Audio API for beeps.
 
@@ -63,11 +63,10 @@ Inspired by classic arcade shooters like Gradius, R-Type, and Xevious, as well a
 
 - **Player**: Diamond-shaped ship with rotation based on movement.
 - **Bullets**: Player bullets are yellow, enemy bullets are red.
-- **Enemies**: Spawn from screen edges, pursue player when close.
+- **Enemies**: Spawn in random locations and type.
 - **Pickups**: Blue ellipses that give score; rare chance for extra life.
 - **Levels**: Increase every 40 + (level*30) score; adds max enemies and spawns pickups.
 - **Collision**: Player loses life on enemy contact or enemy bullets; enemies die on player bullets.
-- **Scoring**: 12 per enemy kill, 4 per pickup.
 
 ## Tips
 
@@ -82,4 +81,4 @@ This project is open-source. Feel free to modify and distribute.
 
 ## Credits
 
-Created with passion for retro gaming. Inspired by classic shooters like Gradius and R-Type.
+Created with passion for retro gaming. Inspired by classic shooters like Galaga, Gradius and R-Type.
