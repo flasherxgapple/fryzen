@@ -1,6 +1,6 @@
 # Fryzen
 
-A fast-paced, twin joystick shoot 'em up game where you control a diamond-shaped ship battling enemies and collecting power-ups. Implemented in multiple languages for cross-platform fun.
+A fast-paced, retro-style shoot 'em up game where you control a diamond-shaped ship battling enemies and collecting power-ups. Implemented in multiple languages for cross-platform fun.
 
 ## Description
 
@@ -8,6 +8,7 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 
 ## Features
 
+- **Multiple Implementations**: Available in JavaScript (web), C++ (terminal), and Python (Pygame).
 - **Shoot Modes**: Rapid fire, blast (spread), and barrage (fast, inaccurate).
 - **Power-Ups**: Collect blue orbs to increase score and occasionally gain lives.
 - **Enemies**: Basic hexagon enemies and charger variants with AI.
@@ -21,7 +22,7 @@ Fryzen is an action-packed game inspired by classic arcade shooters. Pilot your 
 
 Navigate your ship, shoot enemies, and avoid collisions. Gain score by defeating enemies and collecting pickups. Levels increase difficulty with more enemies.
 
-Play the web version directly in your browser: [https://fryzen.netlify.app]
+Play the web version directly in your browser: [Link to live game]
 
 ### Desktop Controls
 
@@ -48,12 +49,13 @@ Play the web version directly in your browser: [https://fryzen.netlify.app]
 
 ## Project Inspiration
 
-Inspired by twin joystick shooter game like Geometry Wars and [Pew Pew Live](https://github.com/pewpewlive).And browser game named [CyberRunner](https://github.com/Luka12-dev/CyberRunner). Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
+Inspired by classic arcade shooters like Gradius, R-Type, and Xevious, as well as modern bullet hell games such as Touhou. Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
 
 ## Technologies Used
 
 - **JavaScript/HTML5 Canvas**: Core web implementation with responsive design.
 - **CSS**: Styling with dark theme and animations.
+- **C++**: Terminal-based version using console output.
 - **Python/Pygame**: Desktop version with Pygame library.
 - **Audio**: Web Audio API for beeps.
 
@@ -76,9 +78,8 @@ Inspired by twin joystick shooter game like Geometry Wars and [Pew Pew Live](htt
 
 ## License
 
-MIT
 This project is open-source. Feel free to modify and distribute.
 
 ## Credits
 
-Created with passion for Twin Joystick Shooter Game. Inspired by [Pew Pew Live](https://github.com/pewpewlive) & Geometry Wars.
+Created with passion for retro gaming. Inspired by classic shooters like Gradius and R-Type.

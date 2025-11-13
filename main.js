@@ -153,19 +153,7 @@ const CONFIG = {
   DEBUG: false,
 };
 
-class Entity {
-  constructor(x=0,y=0,w=16,h=16) {
-    this.x = x; this.y = y; this.w = w; this.h = h;
-    this.vx = 0; this.vy = 0;
-    this.dead = false;
-    this.tags = new Set();
-  }
-  update(dt) {}
-  draw(ctx) {}
-  intersects(other) {
-    return !(this.x+this.w < other.x || this.x > other.x+other.w || this.y+this.h < other.y || this.y > other.y+other.h);
-  }
-}
+
 
 class Player extends Entity {
 
@@ -270,17 +258,17 @@ switch (this.shootMode) {
     }
     break;
   case 'blast':
-    if (this.score >= 5 || this.timeAttackActive) {
+    if (this.score >= 6 || this.timeAttackActive) {
       const angle = Math.atan2(shootDir.y, shootDir.x);
-      for (let i = -1; i <= 4; i++) {
+      for (let i = -1; i <= 6; i++) {
         const spread = angle + i * 0.18; // wider spread for 3 bullets
         const bx = this.x + this.w/2 + Math.cos(spread) * (this.w/2 + 6);
         const by = this.y + this.h/2 + Math.sin(spread) * (this.h/2 + 6);
         const b = new Bullet(bx, by, Math.cos(spread) * CONFIG.bulletSpeed, Math.sin(spread) * CONFIG.bulletSpeed, 'player');
         world.spawn(b);
       }
-      this.shootCooldown = 0.62;
-      if (!this.timeAttackActive) this.score -= 5;
+      this.shootCooldown = 0.48;
+      if (!this.timeAttackActive) this.score -= 6;
       AudioEngine.beep(700, 0.06);
     }
     break;
@@ -350,157 +338,11 @@ switch (this.shootMode) {
    }
 }
 
-class Bullet extends Entity {
-  constructor(x,y,vx,vy,owner='enemy') {
-    super(x-6,y-6,12,12);
-    this.vx = vx; this.vy = vy;
-    this.owner = owner;
-    this.life = 2.2;
-    this.color = owner === 'player' ? '#ffd95a' : '#ff6b6b';
-    this.tags.add('bullet');
-  }
-  update(dt, world) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.life -= dt;
-    if (this.life <= 0) this.dead = true;
-    // if out of bounds -> die
-    if (this.x < -50 || this.x > world.w + 50 || this.y < -50 || this.y > world.h + 50) this.dead = true;
-  }
-  draw(ctx) {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x + this.w/2, this.y + this.h/2, this.w/2, 0, Math.PI*2);
-    ctx.fill();
-  }
-}
 
-class Enemy extends Entity {
-   constructor(x,y,type='basic') {
-     super(x,y,26,26);
-     this.type = type;
-     this.color = (type==='charger')? '#ff9f43' : '#ff6b6b';
-     this.speed = CONFIG.enemySpeed * (type==='charger'?1.4:1);
-     this.health = 5;
-     this.fireCooldown = rand(0.5, 1.6);
-     this.patrolAngle = rand(0, Math.PI*2);
-     this.tags.add('enemy');
-     this.target = null;
-     this.spinAngle = rand(0, Math.PI*2); // for spinning effect
-   }
-   update(dt, world) {
-     const player = world.player;
-     if(!player) return;
-     // Simple AI: if near, move towards player; else patrol
-     const dx = (player.x + player.w/2) - (this.x + this.w/2);
-     const dy = (player.y + player.h/2) - (this.y + this.h/2);
-     const d = Math.hypot(dx, dy);
-     if (d < 300) {
-       // pursue
-       this.vx = (dx/d) * this.speed;
-       this.vy = (dy/d) * this.speed;
-       // shoot occasionally if in range
-       if (d < 420) {
-         this.fireCooldown -= dt;
-         if (this.fireCooldown <= 0) {
-           const angle = Math.atan2(dy, dx);
-           const bx = this.x + this.w/2 + Math.cos(angle) * (this.w/2 + 6);
-           const by = this.y + this.h/2 + Math.sin(angle) * (this.h/2 + 6);
-           const b = new Bullet(bx, by, Math.cos(angle) * (CONFIG.bulletSpeed*0.72), Math.sin(angle) * (CONFIG.bulletSpeed*0.72), 'enemy');
-           world.spawn(b);
-           this.fireCooldown = rand(0.6, 1.6);
-         }
-       }
-     } else {
-       // patrol
-       this.patrolAngle += dt * 0.8;
-       this.vx = Math.cos(this.patrolAngle) * (this.speed * 0.6);
-       this.vy = Math.sin(this.patrolAngle) * (this.speed * 0.6);
-     }
-     // apply movement
-     this.x += this.vx * dt;
-     this.y += this.vy * dt;
-     // spin the enemy
-     this.spinAngle += dt * 2.2; // adjust speed as desired
-     // keep within bounds
-     if (this.x < 8) this.x = 8;
-     if (this.y < 8) this.y = 8;
-     if (this.x > world.w - this.w - 8) this.x = world.w - this.w - 8;
-     if (this.y > world.h - this.h - 8) this.y = world.h - this.h - 8;
-   }
-   // Meshes for enemies:
-   // Hexagon (basic/red), Pentagon (charger/orange)
-   static meshes = {
-     basic: [ // Hexagon
-       [0, -13],
-       [11, -6],
-       [11, 6],
-       [0, 13],
-       [-11, 6],
-       [-11, -6],
-     ],
-     charger: [ // Pentagon
-       [0, -13],
-       [12, -4],
-       [7, 12],
-       [-7, 12],
-       [-12, -4],
-     ],
-     tank: [ // Square (default fallback)
-       [-12, -12],
-       [12, -12],
-       [12, 12],
-       [-12, 12],
-     ],
-   };
-   draw(ctx) {
-     ctx.save();
-     ctx.translate(this.x + this.w/2, this.y + this.h/2);
-     ctx.rotate(this.spinAngle || 0); // spin the mesh
-     const scale = 1 + Math.sin(now()/150 + (this.x+this.y)/50)*0.03;
-     ctx.scale(scale, scale);
-     ctx.fillStyle = this.color;
-     // Choose mesh by type
-     const mesh = Enemy.meshes[this.type] || Enemy.meshes.tank;
-     ctx.beginPath();
-     ctx.moveTo(mesh[0][0], mesh[0][1]);
-     for (let i = 1; i < mesh.length; i++) {
-       ctx.lineTo(mesh[i][0], mesh[i][1]);
-     }
-     ctx.closePath();
-     ctx.fill();
-     ctx.restore();
-     if (CONFIG.DEBUG) {
-       ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-       ctx.strokeRect(this.x, this.y, this.w, this.h);
-     }
-   }
-}
 
-class Pickup extends Entity {
-  constructor(x,y) {
-    super(x,y,18,18);
-    this.color = '#66d9ff';
-    this.tags.add('pickup');
-    this.angle = rand(0,Math.PI*2);
-    this.ttl = 30;
-  }
-  update(dt) {
-    this.angle += dt * 3.2;
-    this.ttl -= dt;
-    if (this.ttl <= 0) this.dead = true;
-  }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x + this.w/2, this.y + this.h/2);
-    ctx.rotate(this.angle);
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.ellipse(0,0,this.w/2, this.h/2, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
+
+
+
 
 class Particle extends Entity {
   constructor(x,y,vx,vy,life=0.6,color='#fff',size=4) {
@@ -552,24 +394,26 @@ class World {
     this.spawnTimer = 0;
     this.maxEnemies = 4 + Math.floor(this.level * 1.2);
   }
-  spawnRandomEnemy() {
-    const edge = randInt(0,3);
-    let x,y;
-    if (edge===0) { x = rand(20, this.w-20); y = -40; }
-    if (edge===1) { x = rand(20, this.w-20); y = this.h+40; }
-    if (edge===2) { x = -40; y = rand(20, this.h-20); }
-    if (edge===3) { x = this.w+40; y = rand(20, this.h-20); }
-    const types = ['basic','charger','tank'];
-    const t = types[randInt(0, types.length-1)];
-    const e = new Enemy(x,y,t);
-    this.spawn(e);
-  }
-  spawnRandomPickup() {
-    const x = rand(64, this.w-64);
-    const y = rand(64, this.h-64);
-    const p = new Pickup(x,y);
-    this.spawn(p);
-  }
+   spawnRandomEnemy() {
+     const edge = randInt(0,3);
+     let x,y;
+     if (edge===0) { x = rand(20, this.w-20); y = -40; }
+     if (edge===1) { x = rand(20, this.w-20); y = this.h+40; }
+     if (edge===2) { x = -40; y = rand(20, this.h-20); }
+     if (edge===3) { x = this.w+40; y = rand(20, this.h-20); }
+     const types = ['triangle', 'square', 'pentagon_line', 'pentagon_split'];
+     const t = types[randInt(0, types.length-1)];
+     let e;
+     if (t === 'pentagon_split') {
+       e = new SplittingPentagon(x, y, 0);
+     } else {
+       e = new Enemy(x, y, t);
+     }
+     this.spawn(e);
+   }
+   spawnRandomPickup() {
+     Buffs.spawnRandom(this);
+   }
   spawnParticles(x,y,count=12,color='#fff') {
     for (let i=0;i<count;i++) {
       const ang = rand(0, Math.PI*2);
@@ -624,79 +468,131 @@ class World {
       this.levelUp();
     }
   }
-  levelUp() {
-    this.level += 1;
-    this.player.score = 0;
-    this.maxEnemies += 2;
-    this.spawnTimer = 0.25;
-    // reward pickups
-    for (let i=0;i<4;i++) this.spawnRandomPickup();
-    AudioEngine.beep(1400, 0.08);
-  }
+   levelUp() {
+     this.level += 1;
+     // Reduce score by 60% if >= 60, else no change
+     if (this.player.score >= 60) {
+       this.player.score *= 0.4;
+     }
+     // Add random lives 1-5
+     this.player.lives += randInt(1, 5);
+     this.player.lives = clamp(this.player.lives, 0, 10); // max 10
+     this.maxEnemies += 2;
+     this.spawnTimer = 0.25;
+     // reward pickups
+     for (let i=0;i<4;i++) this.spawnRandomPickup();
+     AudioEngine.beep(1400, 0.08);
+   }
   checkCollisions() {
     const ents = this.entities;
     const len = ents.length;
     for (let i=0;i<len;i++) {
       const a = ents[i];
       if (a.dead) continue;
-      // bullets vs others
-      if (a.tags.has('bullet')) {
-        for (let j=0;j<len;j++) {
-          const b = ents[j];
-          if (b === a || b.dead) continue;
-          // bullet owned by player hits enemy
-          if (a.owner === 'player' && b.tags.has('enemy') && a.intersects(b)) {
-            b.health -= 1;
-            a.dead = true;
-            this.spawnParticles(a.x + a.w/2, a.y + a.h/2, 8, '#ffd95a');
-if (b.health <= 0) {
-              b.dead = true;
-              this.player.score += 12;
-              this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 18, '#ff6b6b');
-              // possible pickup drop
-              if (Math.random() < 0.3) this.spawnRandomPickup();
-            }
-          }
-          // bullet owned by enemy hits player
-          if (a.owner === 'enemy' && b === this.player && a.intersects(b)) {
-            a.dead = true;
-            if (this.player.invuln <= 0) {
-              this.player.lives -= 1;
-              this.player.invuln = 1.4;
-              this.spawnParticles(this.player.x + this.player.w/2, this.player.y + this.player.h/2, 20, '#66d9ff');
-              AudioEngine.beep(220, 0.08);
-              if (this.player.lives <= 0) {
-                this.player.dead = true;
-                this.onPlayerDeath();
-              }
-            }
-          }
-        }
-      }
+       // bullets vs others
+       if (a.tags.has('bullet')) {
+         for (let j=0;j<len;j++) {
+           const b = ents[j];
+           if (b === a || b.dead) continue;
+           // bullet owned by player hits enemy
+           if (a.owner === 'player' && b.tags.has('enemy') && a.intersects(b)) {
+             b.health -= 1;
+             a.dead = true;
+             this.spawnParticles(a.x + a.w/2, a.y + a.h/2, 8, '#ffd95a');
+             if (b.health <= 0) {
+               b.dead = true;
+               this.player.score += (b instanceof SplittingPentagon ? (b.sizeLevel === 2 ? 12 : 1) : 12);
+               this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 18, '#ff6b6b');
+               // possible pickup drop
+               if (Math.random() < 0.3) this.spawnRandomPickup();
+               // Handle splitting
+               if (b instanceof SplittingPentagon) {
+                 b.onDeath(this);
+               }
+               // Square death spread
+               if (b.type === 'square') {
+                 const numBullets = Math.max(4, this.player.lives - 2);
+                 const centerX = b.x + b.w/2;
+                 const centerY = b.y + b.h/2;
+                 for (let i = 0; i < numBullets; i++) {
+                   const angle = (i / numBullets) * Math.PI * 2;
+                   const bx = centerX + Math.cos(angle) * 10;
+                   const by = centerY + Math.sin(angle) * 10;
+                   const bullet = new Bullet(bx, by, Math.cos(angle) * CONFIG.bulletSpeed * 0.8, Math.sin(angle) * CONFIG.bulletSpeed * 0.8, 'enemy');
+                   this.spawn(bullet);
+                 }
+               }
+             }
+           }
+           // bullet owned by player hits ChasingBullet
+           if (a.owner === 'player' && b instanceof ChasingBullet && a.intersects(b)) {
+             b.dead = true;
+             a.dead = true;
+             this.spawnParticles(a.x + a.w/2, a.y + a.h/2, 8, '#ffd95a');
+             this.player.score += 2; // small score for shooting enemy bullet
+             this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 6, '#ff4757');
+           }
+           // bullet owned by enemy hits player
+           if (a.owner === 'enemy' && b === this.player && a.intersects(b)) {
+             a.dead = true;
+             if (this.player.invuln <= 0) {
+               this.player.lives -= 1;
+               this.player.invuln = 1.4;
+               this.spawnParticles(this.player.x + this.player.w/2, this.player.y + this.player.h/2, 20, '#66d9ff');
+               AudioEngine.beep(220, 0.08);
+               if (this.player.lives <= 0) {
+                 this.player.dead = true;
+                 this.onPlayerDeath();
+               }
+             }
+           }
+           // ChasingBullet hits player
+           if (a instanceof ChasingBullet && b === this.player && a.intersects(b)) {
+             a.dead = true;
+             if (this.player.invuln <= 0) {
+               this.player.lives -= 1;
+               this.player.invuln = 1.2;
+               this.spawnParticles(this.player.x + this.player.w/2, this.player.y + this.player.h/2, 24, '#ff4757');
+               if (this.player.lives <= 0) {
+                 this.player.dead = true;
+                 this.onPlayerDeath();
+               }
+             }
+           }
+         }
+       }
       // player vs pickups
       if (a === this.player) {
         for (let j=0;j<len;j++) {
           const b = ents[j];
           if (b === a || b.dead) continue;
-          if (b.tags.has('pickup') && a.intersects(b)) {
-            b.dead = true;
-            this.player.score += 4;
-            this.player.lives = clamp(this.player.lives + 0, 0, 5); // pickups give score but not direct life
-            this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 14, '#66d9ff');
-            AudioEngine.beep(1200, 0.06);
-          }
-          // player touches enemy
-          if (b.tags.has('enemy') && a.intersects(b)) {
-            if (this.player.invuln <= 0) {
-              this.player.lives -= 1;
-              this.player.invuln = 1.2;
-              this.spawnParticles(this.player.x + this.player.w/2, this.player.y + this.player.h/2, 24, '#ff9f43');
-              if (this.player.lives <= 0) {
-                this.player.dead = true;
-                this.onPlayerDeath();
-              }
-            }
-          }
+           if (b.tags.has('pickup') && a.intersects(b)) {
+             b.dead = true;
+             if (b.type === 'life') {
+               this.player.lives = clamp(this.player.lives + 1, 0, 10);
+               this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 14, '#a8e6cf');
+             } else if (b.type === 'invuln') {
+               this.player.invuln = 5.0;
+               this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 14, '#f5f5f5');
+             } else {
+               this.player.score += 4;
+               this.spawnParticles(b.x + b.w/2, b.y + b.h/2, 14, '#66d9ff');
+             }
+             AudioEngine.beep(1200, 0.06);
+           }
+           // player touches enemy
+           if (b.tags.has('enemy') && a.intersects(b)) {
+             if (this.player.invuln <= 0) {
+               const damage = (b.type === 'square') ? 2 : 1;
+               this.player.lives -= damage;
+               this.player.invuln = 1.2;
+               this.spawnParticles(this.player.x + this.player.w/2, this.player.y + this.player.h/2, 24, '#ff9f43');
+               if (this.player.lives <= 0) {
+                 this.player.dead = true;
+                 this.onPlayerDeath();
+               }
+             }
+           }
         }
       }
     }
@@ -718,7 +614,7 @@ if (b.health <= 0) {
     for (const p of this.particles) p.draw(ctx);
     // debug
     if (CONFIG.DEBUG) {
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#09f';
       ctx.fillText(`Entities: ${this.entities.length}`, 10, 18);
     }
   }
@@ -1157,5 +1053,4 @@ window.addEventListener('load', function() {
   if (!window.requestAnimationFrame) {
     window.requestAnimationFrame = function(cb) { return setTimeout(() => cb(performance.now()), 1000/60); };
   }
-
 })();
