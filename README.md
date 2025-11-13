@@ -23,7 +23,9 @@ Fryzen is an action-packed game inspired by twin joystick shooter game. Pilot yo
 
 Navigate your ship, shoot enemies, and avoid collisions. Gain score by defeating enemies and collecting pickups. Levels increase difficulty with more enemies.
 
-Play the web version directly in your browser: [https://fryzen.netlify.app]
+Play FRYZEN directly in your browser: [Click here](https://fryzen.netlify.app).
+
+I reccomend to play in landscape mode if u use phone
 
 ### Desktop Controls
 
@@ -50,7 +52,7 @@ Play the web version directly in your browser: [https://fryzen.netlify.app]
 
 ## Project Inspiration
 
-Inspired by twin joystick shooter game, as well as modern bullet hell games such as Touhou. Built as an experiment in game development across multiple programming languages, focusing on simple mechanics, smooth controls, and retro aesthetics.
+Inspired by twin joystick shooter game, Like [Pew Pew Live](https://github.com/pewpewlive).. Built as an experiment in game development.
 
 ## Technologies Used
 
@@ -63,9 +65,9 @@ Inspired by twin joystick shooter game, as well as modern bullet hell games such
 
 - **Player**: Diamond-shaped ship with rotation based on movement.
 - **Bullets**: Player bullets are yellow, enemy bullets are red.
-- **Enemies**: Spawn in random locations and type.
+- **Enemies**: Spawn in random locations and random type.
 - **Pickups**: Blue ellipses that give score; rare chance for extra life.
-- **Levels**: Increase every 40 + (level*30) score; adds max enemies and spawns pickups.
+- **Levels**: Increase every 40 + (level*30) score; adds max enemies and spawns pickups; and adjust the player score.
 - **Collision**: Player loses life on enemy contact or enemy bullets; enemies die on player bullets.
 
 ## Tips
@@ -77,8 +79,10 @@ Inspired by twin joystick shooter game, as well as modern bullet hell games such
 
 ## License
 
+MIT
+
 This project is open-source. Feel free to modify and distribute.
 
 ## Credits
 
-Created with passion for retro gaming. Inspired by classic shooters like Galaga, Gradius and R-Type.
+Created with passion for space shooter games. Inspired by [Pew Pew Live](pewpew.live) and Geometry Wars.
